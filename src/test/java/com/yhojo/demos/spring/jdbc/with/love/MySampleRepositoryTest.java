@@ -5,6 +5,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 
+import java.util.List;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +41,9 @@ public class MySampleRepositoryTest {
 		assertEquals(person.name, foundPerson.name);
 		assertEquals(person.age, foundPerson.age);
 		assertEquals(person.getRole(), foundPerson.getRole());
+
+		List<MyPerson> persons = sampleRepository.findAll();
+		assertEquals(2, persons.size());
 
 		// id=1を更新する
 		person.age = 43;
