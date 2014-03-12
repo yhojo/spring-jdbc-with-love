@@ -271,10 +271,11 @@ public class EntityAccess {
 				} catch (InstantiationException | IllegalAccessException e) {
 					throw new RuntimeException(e);
 				}
+				int index = 1;
 				for (String name: allFieldNames) {
 					FieldAccess fieldAccess = fieldAccessMap.get(name);
-					fieldAccess.setValue(entity, rs.getObject(rowNum));
-					rowNum++;
+					fieldAccess.setValue(entity, rs.getObject(index));
+					index++;
 				}
 				return entity;
 			}
@@ -296,7 +297,11 @@ public class EntityAccess {
 		return rowMapper;
 	}
 
-	public <T> List<T> findList(final Class<T> entityClass, RowMapper<T> rowMapper, String sql, Object ...args) {
+	public <T> List<T> findListWithWRowMapper(final Class<T> entityClass, RowMapper<T> rowMapper, String sql, Object ...args) {
 		return jdbc.query(sql, args, rowMapper);
+	}
+
+	public <T> List<T> findList(Class<T> entityClass, String sql, Object ...args) {
+		return jdbc.query(sql, args, createRowMapper(entityClass));
 	}
 }
