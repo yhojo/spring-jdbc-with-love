@@ -42,8 +42,11 @@ public class MySampleRepositoryTest {
 		assertEquals(person.age, foundPerson.age);
 		assertEquals(person.getRole(), foundPerson.getRole());
 
+		// 全部検索してみる。
 		List<MyPerson> persons = sampleRepository.findAll();
 		assertEquals(2, persons.size());
+		assertEquals(person.name, persons.get(0).name);
+		assertEquals(anotherPerson.name, persons.get(1).name);
 
 		// id=1を更新する
 		person.age = 43;
