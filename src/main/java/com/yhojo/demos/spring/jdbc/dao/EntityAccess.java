@@ -22,6 +22,7 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementSetter;
 import org.springframework.jdbc.core.ResultSetExtractor;
+import org.springframework.jdbc.core.RowMapper;
 
 public class EntityAccess {
 	private Class<?> targetClass;
@@ -258,5 +259,44 @@ public class EntityAccess {
 				}
 			}			
 		}, args);
+	}
+
+	public <T> RowMapper<T> createRowMapper(final Class<T> entityClass) {
+		return new RowMapper<T>() {
+			@Override
+			public T mapRow(ResultSet rs, int rowNum) throws SQLException {
+				T entity;
+				try {
+					entity = entityClass.newInstance();
+				} catch (InstantiationException | IllegalAccessException e) {
+					throw new RuntimeException(e);
+				}
+				for (String name: allFieldNames) {
+					FieldAccess fieldAccess = fieldAccessMap.get(name);
+					fieldAccess.setValue(entity, rs.getObject(rowNum));
+					rowNum++;
+				}
+				return entity;
+			}
+		};
+	}
+	
+	public RowMapper<List<?>> joinRowMapper(final RowMapper<?> ... rowMappers) {
+		RowMapper<List<?>> rowMapper = new RowMapper<List<?>>() {
+			@Override
+			public List<Object> mapRow(ResultSet rs, int rowNum) throws SQLException {
+				List<Object> list = new ArrayList<>();
+				for (RowMapper<?> rowMapper: rowMappers) {
+					list.add(rowMapper.mapRow(rs, rowNum));
+					rowNum++;
+				}
+				return list;
+			}
+		};
+		return rowMapper;
+	}
+
+	public <T> List<T> findList(final Class<T> entityClass, RowMapper<T> rowMapper, String sql, Object ...args) {
+		return jdbc.query(sql, args, rowMapper);
 	}
 }
