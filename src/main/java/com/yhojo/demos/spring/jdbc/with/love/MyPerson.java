@@ -26,4 +26,15 @@ public class MyPerson {
 	public String getRole() {
 		return role;
 	}
+	
+	private long groupId;
+
+	@ColMap(colName = "GROUP_ID")
+	public void setGroupId(long groupId) {
+		this.groupId = groupId;
+	}
+
+	public long getGroupId() {
+		return groupId;
+	}
 }

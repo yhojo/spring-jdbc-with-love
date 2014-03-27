@@ -27,12 +27,14 @@ public class MySampleRepositoryTest {
 		person.name = "Yasuo Hojo";
 		person.age = 12;
 		person.setRole("Java Programmer");
+		person.setGroupId(1);
 		sampleRepository.insert(person);
 		MyPerson anotherPerson = new MyPerson();
 		anotherPerson.id = 2;
 		anotherPerson.name = "Another Name";
 		anotherPerson.age = 31;
 		anotherPerson.setRole("Ruby Programmer");
+		anotherPerson.setGroupId(2);
 		sampleRepository.insert(anotherPerson);
 
 		// id=1を検索して内容が合致しているか確認
@@ -47,6 +49,10 @@ public class MySampleRepositoryTest {
 		assertEquals(2, persons.size());
 		assertEquals(person.name, persons.get(0).name);
 		assertEquals(anotherPerson.name, persons.get(1).name);
+
+		// 関連テーブルから検索
+		persons = sampleRepository.findByGroupId("TEAM ALPHA");
+		assertEquals(1, persons.size());
 
 		// id=1を更新する
 		person.age = 43;

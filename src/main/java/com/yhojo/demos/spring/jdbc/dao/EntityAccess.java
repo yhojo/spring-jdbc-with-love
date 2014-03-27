@@ -26,12 +26,14 @@ import org.springframework.jdbc.core.RowMapper;
 
 public class EntityAccess {
 	private Class<?> targetClass;
+	private String name;
 	private String tableName;
 	private List<String> allFieldNames = new ArrayList<>();
 	private List<String> pkeyFieldNames = new ArrayList<>();
 	private List<String> bodyFieldNames = new ArrayList<>();
 	private Map<String, FieldAccess> fieldAccessMap = new HashMap<>();
 	private JdbcTemplate jdbc = new JdbcTemplate();
+	private EntityAccessRepository entityAccessRepository;
 
 	public EntityAccess(Class<?> clazz) {
 		try {
@@ -42,6 +44,11 @@ public class EntityAccess {
 				tableName = entityMap.tableName();
 			} else {
 				tableName = clazz.getSimpleName();
+			}
+			if (entityMap != null && !StringUtils.isEmpty(entityMap.name())) {
+				name = entityMap.name();
+			} else {
+				name = targetClass.getSimpleName();
 			}
 			// オブジェクトのフィールドからカラムへのマッピングを設定する
 			for (final Field field: clazz.getFields()) {
@@ -55,6 +62,11 @@ public class EntityAccess {
 		} catch (IntrospectionException e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+	public void setEntityAccessRepository(EntityAccessRepository entityAccessRepository) {
+		this.entityAccessRepository = entityAccessRepository;
+		entityAccessRepository.registerEntityAccess(name, this);
 	}
 
 	public void setDataSource(DataSource dataSource) {
@@ -85,25 +97,28 @@ public class EntityAccess {
 		fieldAccess.setValue(entity, value);
 	}
 
-	private String calcColNamesOf(List<String> names) {
+	private String calcColNamesOf(String prefix, List<String> names) {
+		if (prefix == null) {
+			prefix = "";
+		}
 		List<String> colNames = new ArrayList<>(names.size());
 		for (String name: names) {
 			FieldAccess fieldAccess = fieldAccessMap.get(name);
-			colNames.add(fieldAccess.getColName());
+			colNames.add(prefix + fieldAccess.getColName());
 		}
 		return StringUtils.join(colNames, ", ");
 	}
 
-	public String calcColNames() {
-		return calcColNamesOf(allFieldNames);
+	public String calcColNames(String prefix) {
+		return calcColNamesOf(prefix, allFieldNames);
 	}
 	
 	public String calcPkeyColNames() {
-		return calcColNamesOf(pkeyFieldNames);
+		return calcColNamesOf("", pkeyFieldNames);
 	}
 
 	public String calcBodyColNames() {
-		return calcColNamesOf(bodyFieldNames);
+		return calcColNamesOf("", bodyFieldNames);
 	}
 
 	public List<FieldAccess> calcFieldAccessOf(List<String> names) {
@@ -119,9 +134,13 @@ public class EntityAccess {
 		Matcher m = ESCAPE_PATTERN.matcher(src);
 		StringBuffer sb = new StringBuffer();
 		while (m.find()) {
+			List<String> expResults = new ArrayList<>();
 			for (String exp: m.group(1).split(",")) {
-				m.appendReplacement(sb, calcColumnName(exp));
+				if (!StringUtils.isEmpty(exp)) {
+					expResults.add(calcColumnName(exp));
+				}
 			}
+			m.appendReplacement(sb, StringUtils.join(expResults, ", "));
 		}
 		m.appendTail(sb);
 		return sb.toString();
@@ -130,15 +149,26 @@ public class EntityAccess {
 	protected String calcColumnName(String exp) {
 		exp = exp.trim();
 		if (StringUtils.equals("*", exp)) {
-			return calcColNames();
+			return calcColNames(tableName + ".");
 		} else if (StringUtils.equals("#TABLE_NAME", exp)) {
 			return tableName;
+		} else if (0 <= exp.indexOf('.')) {
+			// 他のエンティティ参照式
+			String[] split = exp.split("\\.");
+			if (split.length != 2) {
+				throw new RuntimeException("Entity reference is invalid: " + exp);
+			}
+			EntityAccess refAccess = entityAccessRepository.resolve(split[0]);
+			if (refAccess == null) {
+				throw new RuntimeException("Entity not found named " + split[0]);
+			}
+			return refAccess.calcColumnName(split[1]);
 		} else {
 			FieldAccess fieldAccess = fieldAccessMap.get(exp);
 			if (fieldAccess == null) {
 				throw new RuntimeException("field not found " + exp + " on " + targetClass.getName());
 			}
-			return fieldAccess.getColName();
+			return tableName + "." + fieldAccess.getColName();
 		}
 	}
 
@@ -153,7 +183,7 @@ public class EntityAccess {
 
 	public String calcInsertSql() {
 		String sql = "INSERT INTO " + tableName
-				+ " (" + StringUtils.join(calcColNames()) + ")"
+				+ " (" + StringUtils.join(calcColNames("")) + ")"
 				+ " VALUES (" + StringUtils.repeat("?", ", ", allFieldNames.size()) + ")";
 		return sql;
 	}
@@ -229,7 +259,7 @@ public class EntityAccess {
 	}
 
 	private String calcFindByPkeySQL() {
-		String sql = "SELECT " + calcColNames()
+		String sql = "SELECT " + calcColNames("")
 				+ " FROM " + tableName
 				+ " WHERE " + calcWhereSql();
 		return sql;

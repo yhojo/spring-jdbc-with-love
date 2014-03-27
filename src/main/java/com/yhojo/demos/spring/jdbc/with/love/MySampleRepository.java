@@ -21,4 +21,10 @@ public class MySampleRepository extends RepositoryBase<MyPerson> {
 		String sql = entityInfo.parseQuery("SELECT @{*} FROM @{#TABLE_NAME} ORDER BY @{id}");
 		return entityInfo.findList(MyPerson.class, sql);
 	}
+
+	public List<MyPerson> findByGroupId(String groupName) {
+ 		String sql = entityInfo.parseQuery("SELECT @{*} FROM @{#TABLE_NAME, Group.#TABLE_NAME}"
+				+ " WHERE @{Group.id} = @{id} AND @{Group.name} = ?");
+		return entityInfo.findList(MyPerson.class, sql, groupName);
+	}
 }

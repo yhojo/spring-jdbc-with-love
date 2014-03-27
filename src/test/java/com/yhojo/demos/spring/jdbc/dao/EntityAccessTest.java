@@ -29,9 +29,9 @@ public class EntityAccessTest {
 
 	@Test
 	public void testRendarColoumnNames() {
-		assertEquals("PERSON_ID, THE_NAME, age", entityAccess.calcColNames());
-		assertEquals("SELECT PERSON_ID, THE_NAME, age", entityAccess.parseQuery("SELECT @{*}"));
-		assertEquals("SELECT THE_NAME", entityAccess.parseQuery("SELECT @{name}"));
+		assertEquals("PERSON_ID, THE_NAME, age", entityAccess.calcColNames(""));
+		assertEquals("SELECT PERSONS.PERSON_ID, PERSONS.THE_NAME, PERSONS.age", entityAccess.parseQuery("SELECT @{*}"));
+		assertEquals("SELECT PERSONS.THE_NAME", entityAccess.parseQuery("SELECT @{name}"));
 	}
 
 	@Test
